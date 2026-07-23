@@ -64,7 +64,12 @@ import { LocalDirectoryHint } from "../../projects/components/local-directory-hi
 import { CommentCard } from "./comment-card";
 import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
-import { ThreadMinimap, type ThreadMinimapThread } from "./thread-minimap";
+import { ThreadMinimap } from "./thread-minimap";
+import {
+  ScrollProgressBar,
+  JumpToEndButton,
+  type MobileThreadNavThread,
+} from "./mobile-thread-nav";
 import { collectThreadReplies, deriveThreadResolution } from "./thread-utils";
 import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
 import { ExecutionLogSection } from "./execution-log-section";
@@ -1302,11 +1307,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // Quick-jump minimap rail: one tick per comment thread (folded resolved
   // bars included), activity groups skipped. Derived from the same flat
   // `items` array Virtuoso renders so tick order always matches the page.
-  const minimapThreads = useMemo<ThreadMinimapThread[]>(
+  const minimapThreads = useMemo<MobileThreadNavThread[]>(
     () =>
-      items.flatMap((it) =>
+      items.flatMap((it, itemIndex) =>
         it.kind === "comment" || it.kind === "resolved-bar"
-          ? [{ id: it.id, entry: it.entry }]
+          ? [{ id: it.id, entry: it.entry, itemIndex }]
           : [],
       ),
     [items],
@@ -1351,6 +1356,15 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     },
     [isFlatTimeline, items, scrollContainerEl],
   );
+  const jumpToEnd = useCallback(() => {
+    if (items.length === 0) return;
+    if (isFlatTimeline) {
+      const container = scrollContainerEl;
+      if (container) container.scrollTop = container.scrollHeight;
+      return;
+    }
+    virtuosoRef.current?.scrollToIndex({ index: items.length - 1, align: "end" });
+  }, [isFlatTimeline, items.length, scrollContainerEl]);
 
   const {
     reactions: issueReactions,
@@ -2114,7 +2128,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const renderItem = (_i: number, item: TimelineItem): React.ReactElement => {
     if (item.kind === "resolved-bar") {
       return (
-        <div className="pb-3" id={`comment-${item.id}`}>
+        <div className="pb-3" id={`comment-${item.id}`} data-timeline-index={_i}>
           <ResolvedThreadBar
             entry={item.entry}
             replies={timelineView.threadReplies.get(item.id) ?? EMPTY_REPLIES}
@@ -2126,7 +2140,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     if (item.kind === "comment") {
       const isResolved = !!item.entry.resolved_at;
       return (
-        <div className="pb-3" id={`comment-${item.id}`}>
+        <div className="pb-3" id={`comment-${item.id}`} data-timeline-index={_i}>
           <CommentCard
             issueId={id}
             entry={item.entry}
@@ -2155,17 +2169,19 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     const truncateOlder = item.id === lastActivityGroupId;
     const showOlder = showOlderActivityIds.has(item.id);
     return (
-      <ActivityBlock
-        entries={item.entries}
-        expanded={expanded}
-        onToggle={() => toggleActivityBlock(item.id, expanded)}
-        truncateOlder={truncateOlder}
-        showOlder={showOlder}
-        onToggleShowOlder={() => showOlderActivities(item.id)}
-        getActorName={getActorName}
-        t={t}
-        timeAgo={timeAgo}
-      />
+      <div data-timeline-index={_i}>
+        <ActivityBlock
+          entries={item.entries}
+          expanded={expanded}
+          onToggle={() => toggleActivityBlock(item.id, expanded)}
+          truncateOlder={truncateOlder}
+          showOlder={showOlder}
+          onToggleShowOlder={() => showOlderActivities(item.id)}
+          getActorName={getActorName}
+          t={t}
+          timeAgo={timeAgo}
+        />
+      </div>
     );
   };
 
@@ -2715,6 +2731,22 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             onJump={jumpToThread}
             className="absolute bottom-0 left-2 top-12"
           />
+        )}
+
+        {/* Mobile thread navigation — replaces the desktop minimap on
+            small screens. Layer 1: passive scroll progress bar (always
+            present, zero interaction cost). Layer 2: floating "jump to
+            end" button that appears when scrolled away from the bottom,
+            with a badge showing threads below the viewport. */}
+        {isMobile && (
+          <>
+            <ScrollProgressBar scrollContainerEl={scrollContainerEl} />
+            <JumpToEndButton
+              threads={minimapThreads}
+              scrollContainerEl={scrollContainerEl}
+              onJumpToEnd={jumpToEnd}
+            />
+          </>
         )}
       </div>
   );

@@ -384,6 +384,7 @@ vi.mock("@multica/core/issues/stores", async () => ({
 // background instead, which is mechanism-independent and observable without
 // layout.
 const scrollIntoViewSpy = vi.hoisted(() => vi.fn());
+const virtuosoScrollToIndexSpy = vi.hoisted(() => vi.fn());
 
 vi.mock("react-virtuoso", () => ({
   Virtuoso: forwardRef(function MockVirtuoso(
@@ -395,7 +396,7 @@ vi.mock("react-virtuoso", () => ({
       // since the deep-link cold-path drives the container's scrollTop on the
       // real DOM node, not Virtuoso's imperative API.
       scrollIntoView: vi.fn(),
-      scrollToIndex: vi.fn(),
+      scrollToIndex: virtuosoScrollToIndexSpy,
     }));
     return (
       <div data-testid="virtuoso-mock">
@@ -808,6 +809,27 @@ describe("IssueDetail (shared)", () => {
 
     expect(screen.queryByTestId("panel-group")).not.toBeInTheDocument();
     expect(screen.queryByText("Properties")).not.toBeInTheDocument();
+  });
+
+  it("jumps to the actual final timeline item on mobile", async () => {
+    mockViewport.isMobile = true;
+    const { container } = renderIssueDetail();
+
+    await screen.findByText("Started working on this");
+    const scrollRoot = container.querySelector<HTMLElement>("[data-tab-scroll-root]");
+    expect(scrollRoot).not.toBeNull();
+    Object.defineProperties(scrollRoot!, {
+      scrollHeight: { value: 2000, configurable: true },
+      clientHeight: { value: 600, configurable: true },
+      scrollTop: { value: 200, configurable: true, writable: true },
+    });
+    scrollRoot!.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 600, left: 0, right: 400, width: 400, height: 600 }) as DOMRect;
+    fireEvent.scroll(scrollRoot!);
+
+    const button = await screen.findByRole("button", { name: "Jump to end" });
+    fireEvent.click(button);
+    expect(virtuosoScrollToIndexSpy).toHaveBeenCalledWith({ index: 1, align: "end" });
   });
 
   it("hides metadata content from the sidebar and shows a button when the bag has keys", async () => {
