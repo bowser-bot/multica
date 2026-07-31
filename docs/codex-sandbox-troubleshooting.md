@@ -24,7 +24,9 @@ profile for `sandbox_mode = "workspace-write"` silently ignores the
 policy hard-codes `CODEX_SANDBOX_NETWORK_DISABLED=1`, which blocks DNS/UDP
 syscalls. Go's `net.LookupHost` surfaces that as `no such host`.
 
-Linux (Landlock) is **not** affected — only macOS Seatbelt.
+Linux (Landlock) is **not** affected by this DNS bug — only macOS Seatbelt.
+(Linux nonetheless defaults to `danger-full-access` today, for an unrelated
+reason; see the decision matrix in "What the daemon does now" below.)
 
 [codex-10390]: https://github.com/openai/codex/issues/10390
 
@@ -39,9 +41,17 @@ Decision matrix (see [`server/internal/daemon/execenv/codex_sandbox.go`](../serv
 
 | Host OS   | Codex version                                    | Managed block emits                                                       |
 | --------- | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| non-darwin | any                                              | `sandbox_mode = "workspace-write"` + `sandbox_workspace_write.network_access = true` (dotted-key form) |
-| darwin    | ≥ `CodexDarwinNetworkAccessFixedVersion`         | same as above (upstream fix in effect)                                    |
+| linux     | any                                              | `sandbox_mode = "danger-full-access"` + warn-level log                     |
+| darwin    | ≥ `CodexDarwinNetworkAccessFixedVersion`         | `sandbox_mode = "workspace-write"` + `sandbox_workspace_write.network_access = true` (dotted-key form; upstream fix in effect) |
 | darwin    | older / unknown (current default)                | `sandbox_mode = "danger-full-access"` + warn-level log                     |
+
+Linux defaults to `danger-full-access` for a reason unrelated to the macOS DNS
+bug below: the daemon used to keep `workspace-write` on Linux by redirecting
+each task's `HOME`/`XDG_*` into a per-task writable home, but that redirect
+could not converge on the unbounded HOME/XDG ecosystem and hid the daemon
+user's real CLI config from tasks. It has been retired, so Linux now matches
+the macOS/Windows full-access fallbacks and containment is expected from the
+boundary the daemon runs in (VM / container / dedicated user).
 
 The managed block is always hoisted to the top of `config.toml` and uses
 TOML dotted-key syntax rather than a `[sandbox_workspace_write]` section

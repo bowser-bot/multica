@@ -22,9 +22,13 @@ import (
 //
 // Until a fixed Codex release ships, the per-task Codex config on macOS needs
 // to fall back to `sandbox_mode = "danger-full-access"` so the agent can
-// actually reach the Multica API. On Linux (and on macOS once the upstream
-// fix is released), the normal `workspace-write` + `network_access = true`
-// combo is preferred because it keeps the filesystem sandbox intact.
+// actually reach the Multica API; once the upstream fix is released macOS
+// returns to `workspace-write` + `network_access = true`.
+//
+// Linux also defaults to `danger-full-access`, but for an unrelated reason
+// (see codexSandboxPolicyFor): the per-task writable HOME redirect that used to
+// make `workspace-write` viable on Linux has been retired (#6218), so Linux no
+// longer keeps a filesystem sandbox by default either.
 //
 // CodexDarwinNetworkAccessFixedVersion is the earliest Codex CLI version in
 // which `network_access = true` is honored under Seatbelt on macOS. Bump this
@@ -40,15 +44,6 @@ type codexSandboxPolicy struct {
 	// NetworkAccess controls `[sandbox_workspace_write] network_access`.
 	// Only meaningful when Mode is "workspace-write".
 	NetworkAccess bool
-	// WritableRoots are extra absolute paths added to
-	// `[sandbox_workspace_write] writable_roots`, granting write access outside
-	// the sandbox cwd (the task workdir). Under workspace-write (Linux Landlock)
-	// everything outside the cwd is read-only, which breaks tools that write to
-	// $HOME (npm, Prisma). The daemon points this at the per-task writable HOME.
-	// Only emitted when Mode is "workspace-write"; empty on darwin
-	// danger-full-access, where the filesystem is not sandboxed at all. See
-	// task_home.go.
-	WritableRoots []string
 	// Reason is a short human-readable label used in warn-level logs.
 	Reason string
 	// Hint is an optional, actionable remediation surfaced in warn-level logs
@@ -73,8 +68,16 @@ func resolveGOOS(goos string) string {
 // detected Codex CLI version. It is the platform baseline; per-task user config
 // can refine it (see codexSandboxPolicyForConfig).
 //
-//   - Linux: workspace-write with network access. Landlock enforces the
-//     filesystem sandbox and is not affected by the macOS Seatbelt bug.
+//   - Linux (and any other non-darwin unix): danger-full-access. Landlock
+//     could enforce a filesystem sandbox here and is not affected by the macOS
+//     Seatbelt bug, but workspace-write made the real HOME read-only, which the
+//     daemon previously papered over with a per-task writable HOME redirect.
+//     That redirect has been retired (#6218): its seed allowlist could not
+//     converge on the unbounded HOME/XDG ecosystem, and redirecting HOME hid the
+//     daemon user's real CLI config (glab, cloud CLIs, …) from tasks. Linux now
+//     matches the macOS/Windows full-access fallbacks — the real HOME stays
+//     writable and host config resolves normally — and containment is expected
+//     from the boundary the daemon runs in (VM / container / dedicated user).
 //   - Windows: danger-full-access, as a deliberate compatibility choice.
 //     Codex ships a native Windows sandbox (windows.sandbox = "unelevated" via
 //     a Restricted Token, or "elevated"), but it is still experimental with
@@ -104,10 +107,13 @@ func codexSandboxPolicyFor(goos, detectedVersion string) codexSandboxPolicy {
 		}
 	}
 	if goos != "darwin" {
+		// Linux (and any other non-darwin unix): see the function doc for the
+		// full rationale. The per-task writable HOME redirect that used to make
+		// workspace-write viable here is gone (#6218), so the filesystem sandbox
+		// is dropped and the real HOME stays writable.
 		return codexSandboxPolicy{
-			Mode:          "workspace-write",
-			NetworkAccess: true,
-			Reason:        "non-darwin platform — seatbelt bug does not apply",
+			Mode:   "danger-full-access",
+			Reason: "codex on linux: per-task HOME redirection retired (#6218); real HOME kept writable, containment expected from the daemon's outer boundary (VM/container/dedicated user)",
 		}
 	}
 	if codexDarwinNetworkAccessFixed(detectedVersion) {
@@ -347,27 +353,10 @@ func renderMulticaManagedBlock(policy codexSandboxPolicy) string {
 	b.WriteString(fmt.Sprintf("sandbox_mode = %q\n", policy.Mode))
 	if policy.Mode == "workspace-write" {
 		b.WriteString(fmt.Sprintf("sandbox_workspace_write.network_access = %t\n", policy.NetworkAccess))
-		if len(policy.WritableRoots) > 0 {
-			b.WriteString("sandbox_workspace_write.writable_roots = ")
-			b.WriteString(renderTomlStringArray(policy.WritableRoots))
-			b.WriteString("\n")
-		}
 	}
 	b.WriteString(multicaManagedEndMarker)
 	b.WriteString("\n")
 	return b.String()
-}
-
-// renderTomlStringArray renders a TOML inline array of basic strings, e.g.
-// ["/a/b", "/c d"]. Each element is quoted with Go's %q, whose escaping (\\,
-// \", \n, …) is a subset of TOML basic-string escaping, so ordinary
-// filesystem paths — including ones with spaces — round-trip safely.
-func renderTomlStringArray(vals []string) string {
-	parts := make([]string, len(vals))
-	for i, v := range vals {
-		parts[i] = fmt.Sprintf("%q", v)
-	}
-	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 // managedBlockRe captures the daemon-owned block (including the surrounding
