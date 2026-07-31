@@ -66,15 +66,15 @@ Antigravity, GitHub Copilot CLI, DevEco Code, and Pi do not read the MCP configu
 MCP server commands, arguments, and environment variables are saved server-side with the agent configuration. Do not write local credentials you have no need to share into the configuration.
 </Callout>
 
-## Access to the runtime computer
+## Host access and isolation
 
-AI coding tools run on the computer that hosts the runtime. Permission controls vary by tool, but each process starts under the same operating-system account as the Multica daemon and may be able to use that account's files, developer tools, and credentials.
+AI coding tools run on the runtime computer using the same operating-system account as the Multica daemon. Permission controls vary by tool.
+
+On Linux and macOS, Codex tasks can read and write files available to that account and can use the network. The same applies on Windows unless Codex's native sandbox is enabled. Tools already set up for the account — such as git, GitHub CLI, and cloud CLIs — are available inside tasks with their existing settings and sign-ins.
 
 <Callout type="warning">
-Treat a runtime as trusted access to its computer. If tasks should not share the daemon user's access, run Multica under a dedicated account or inside a VM or container.
+To limit what Codex tasks can reach, run the Multica daemon under a dedicated OS account or place the runtime in a VM or container.
 </Callout>
-
-Codex currently uses full-access mode on Linux and macOS, and on Windows unless its native sandbox is enabled. This allows tasks to use the developer tools already configured on the computer and to access the network.
 
 ## Skill injection
 
