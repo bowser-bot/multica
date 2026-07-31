@@ -3075,6 +3075,7 @@ func TestCodexSandboxPolicyFor(t *testing.T) {
 		{"linux unknown version", "linux", "", "danger-full-access", false, true},
 		{"windows any version", "windows", "0.144.5", "danger-full-access", false, false},
 		{"windows unknown version", "windows", "", "danger-full-access", false, false},
+		{"other unix unchanged", "freebsd", "0.100.0", "workspace-write", true, false},
 		{"darwin old version", "darwin", "0.121.0", "danger-full-access", false, true},
 		{"darwin unknown version", "darwin", "", "danger-full-access", false, true},
 	}
