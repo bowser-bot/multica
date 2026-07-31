@@ -66,13 +66,15 @@ Antigravity、GitHub Copilot CLI、DevEco Code 和 Pi 暂不读取智能体中�
 MCP server 的命令、参数和环境变量会随智能体配置保存在服务器端。不要把不需要共享的本地凭据直接写入配置。
 </Callout>
 
-## Codex 沙箱与宿主机访问
+## 对运行时电脑的访问
+
+AI 编程工具运行在承载运行时的电脑上。不同工具的权限控制有所不同，但进程都由与 Multica 守护进程相同的系统账号启动，因此可能访问该账号能使用的文件、开发工具和凭据。
 
 <Callout type="warning">
-Linux 和 macOS 默认使用 `danger-full-access`；Windows 未配置 Codex 原生沙箱时也使用该模式。Codex 执行的命令可以读写守护进程用户有权访问的文件，并且可以访问网络。任务需要隔离时，请把守护进程运行在 VM、容器、专用系统账号或等效的外层边界中。
+请把运行时视为对这台电脑的可信访问。如果不希望任务共享守护进程用户的访问范围，请使用专用系统账号运行 Multica，或把它放在 VM 或容器中。
 </Callout>
 
-Multica 保留守护进程用户正常的 `HOME` 与 XDG 环境，让本机已配置的 CLI 继续找到凭据、配置、socket 和状态。单次执行的 `CODEX_HOME` 仍然独立：Multica 继续用它管理 Codex 配置、会话、MCP 与 skill 注入。沙箱选择不会改写用户的 `approval_policy`。
+Codex 当前在 Linux 和 macOS 上使用完全访问模式；Windows 未启用 Codex 原生沙箱时也一样。这样，任务可以使用电脑上已经配置的开发工具并访问网络。
 
 ## Skill 注入方式
 
