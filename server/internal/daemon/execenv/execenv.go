@@ -549,7 +549,11 @@ func Reuse(params ReuseParams, logger *slog.Logger) *Environment {
 
 	// Restore CodexHome for Codex provider — the per-task codex-home directory
 	// lives alongside the workdir. Re-run prepareCodexHomeWithOpts to ensure
-	// config (especially sandbox/network access) is up to date.
+	// config (especially sandbox/network access) is up to date. A reused env
+	// root created by an older daemon may still contain a `home/` directory
+	// from the retired ordinary-HOME overlay (#6218); it is inert because the
+	// daemon no longer exports HOME/XDG overrides, and the managed config
+	// rewrite below removes its stale writable_roots entry.
 	if params.Provider == "codex" {
 		codexHome := filepath.Join(env.RootDir, codexHomeDirName)
 		if err := prepareCodexHomeWithOpts(codexHome, CodexHomeOptions{CodexVersion: params.CodexVersion, ResumeSessionID: params.ResumeSessionID, IsLocalDirectory: params.LocalDirectory, SessionStoreKey: codexSessionStoreKey(params.Profile, params.Task.AgentID, params.Task.IssueID), CodexCustomArgs: params.CodexCustomArgs}, logger); err != nil {
