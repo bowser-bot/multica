@@ -70,6 +70,7 @@ import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
 import { CommentCard } from "./comment-card";
 import { CommentInput } from "./comment-input";
+import { CurrentIssueRenderContextProvider } from "../current-issue-render-context";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { getShortcut, shortcutMatchesEvent } from "@multica/core/shortcuts";
 import { isImeComposing } from "@multica/core/utils";
@@ -2057,6 +2058,18 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     overrideTop: restoredScrollTop,
   });
 
+  // Keep the identity value stable across unrelated issue-detail updates so
+  // context consumers only re-render when the owning issue changes identity.
+  const resolvedIssueId = issue?.id;
+  const resolvedIssueIdentifier = issue?.identifier;
+  const currentIssueRenderContext = useMemo(
+    () =>
+      resolvedIssueId && resolvedIssueIdentifier
+        ? { id: resolvedIssueId, identifier: resolvedIssueIdentifier }
+        : null,
+    [resolvedIssueId, resolvedIssueIdentifier],
+  );
+
   if (loading) {
     return <IssueDetailSkeleton leading={leadingAction} />;
   }
@@ -2695,64 +2708,66 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </AppLink>
           )}
 
-          <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
-            <ContentEditor
-              ref={descEditorRef}
-              key={id}
-              value={issue.description || ""}
-              placeholder={t(($) => $.detail.desc_placeholder)}
-              onUpdate={(md, baseMarkdown) => {
-                // Bind any pending uploads still referenced in the markdown
-                // so they appear in `issueAttachments` after refresh and the
-                // editor's text/code preview keeps working past reload.
-                //
-                // Match with `contentReferencesAttachment`, NOT `md.includes(a.url)`:
-                // the editor persists the durable `markdownLink`
-                // (`/api/attachments/<id>/download` / `markdown_url`) into the
-                // body, never the raw storage `a.url`. A bare `md.includes(a.url)`
-                // therefore never matches, so the upload is never linked via
-                // `attachment_ids`. After reload it's absent from
-                // `issueAttachments`, the renderer can't resolve it to a
-                // freshly-signed `download_url`, and the persisted auth-gated
-                // download endpoint fails to load as a native <img> on clients
-                // whose origin isn't the API host (Desktop/Electron, mobile
-                // webview) — while still working on web via the cookie/proxy.
-                // This mirrors the comment/reply/chat composers, which already
-                // bind via `contentReferencesAttachment` (MUL-3130 / MUL-3192).
-                const ids = descPendingAttachmentsRef.current
-                  .filter((a) => contentReferencesAttachment(md, a))
-                  .map((a) => a.id);
-                handleUpdateField({
-                  description: md,
-                  description_base: baseMarkdown,
-                  attachment_ids: ids.length > 0 ? ids : undefined,
-                });
-              }}
-              onUploadFile={handleDescriptionUpload}
-              debounceMs={1500}
-              // Closing the issue modal must save what the user last saw —
-              // without the flush, a paste followed by a quick close loses
-              // the image markdown and its attachment_ids bind (MUL-3254).
-              flushPendingOnUnmount
-              currentIssueId={id}
-              attachments={descEditorAttachments}
-            />
+          <CurrentIssueRenderContextProvider value={currentIssueRenderContext}>
+            <div {...descDropZoneProps} className="relative mt-5 rounded-lg">
+              <ContentEditor
+                ref={descEditorRef}
+                key={id}
+                value={issue.description || ""}
+                placeholder={t(($) => $.detail.desc_placeholder)}
+                onUpdate={(md, baseMarkdown) => {
+                  // Bind any pending uploads still referenced in the markdown
+                  // so they appear in `issueAttachments` after refresh and the
+                  // editor's text/code preview keeps working past reload.
+                  //
+                  // Match with `contentReferencesAttachment`, NOT `md.includes(a.url)`:
+                  // the editor persists the durable `markdownLink`
+                  // (`/api/attachments/<id>/download` / `markdown_url`) into the
+                  // body, never the raw storage `a.url`. A bare `md.includes(a.url)`
+                  // therefore never matches, so the upload is never linked via
+                  // `attachment_ids`. After reload it's absent from
+                  // `issueAttachments`, the renderer can't resolve it to a
+                  // freshly-signed `download_url`, and the persisted auth-gated
+                  // download endpoint fails to load as a native <img> on clients
+                  // whose origin isn't the API host (Desktop/Electron, mobile
+                  // webview) — while still working on web via the cookie/proxy.
+                  // This mirrors the comment/reply/chat composers, which already
+                  // bind via `contentReferencesAttachment` (MUL-3130 / MUL-3192).
+                  const ids = descPendingAttachmentsRef.current
+                    .filter((a) => contentReferencesAttachment(md, a))
+                    .map((a) => a.id);
+                  handleUpdateField({
+                    description: md,
+                    description_base: baseMarkdown,
+                    attachment_ids: ids.length > 0 ? ids : undefined,
+                  });
+                }}
+                onUploadFile={handleDescriptionUpload}
+                debounceMs={1500}
+                // Closing the issue modal must save what the user last saw —
+                // without the flush, a paste followed by a quick close loses
+                // the image markdown and its attachment_ids bind (MUL-3254).
+                flushPendingOnUnmount
+                currentIssueId={id}
+                attachments={descEditorAttachments}
+              />
 
-            <div className="flex items-center gap-1 mt-3">
-              <ReactionBar
-                reactions={issueReactions}
-                currentUserId={user?.id}
-                onToggle={handleToggleIssueReaction}
-                getActorName={getActorName}
-              />
-              <FileUploadButton
-                size="sm"
-                multiple
-                onSelect={(file) => descEditorRef.current?.uploadFile(file)}
-              />
+              <div className="flex items-center gap-1 mt-3">
+                <ReactionBar
+                  reactions={issueReactions}
+                  currentUserId={user?.id}
+                  onToggle={handleToggleIssueReaction}
+                  getActorName={getActorName}
+                />
+                <FileUploadButton
+                  size="sm"
+                  multiple
+                  onSelect={(file) => descEditorRef.current?.uploadFile(file)}
+                />
+              </div>
+              {descDragOver && <FileDropOverlay />}
             </div>
-            {descDragOver && <FileDropOverlay />}
-          </div>
+          </CurrentIssueRenderContextProvider>
 
           {/* Sub-issues — Linear-style */}
           {childIssues.length === 0 && (
@@ -3013,63 +3028,65 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 first commit. Without this null guard Virtuoso falls back to
                 its own scroller, grabs 0 height inside overflow-y-auto, and
                 miscomputes total-height on first paint. */}
-            {timelineLoading && timelineView.groups.length === 0 ? (
-              <TimelineSkeleton />
-            ) : (
-              // Two render modes:
-              //   - `highlightCommentId` set (came from inbox deep-link) →
-              //     render flat. Every comment mounts, every height is real,
-              //     the target id is in the DOM the instant the useEffect
-              //     above runs `scrollIntoView`. No virtualization estimate
-              //     errors, no spacer reflow drift. Pays cold-mount cost
-              //     proportional to items.length (markdown + lowlight per
-              //     comment), which is acceptable in the deep-link case —
-              //     the user has explicit intent to land on a specific item.
-              //   - `find.open` (in-page Cmd/Ctrl+F) → also render flat, so
-              //     every comment is in the DOM for the find walk to match
-              //     and highlight. Same explicit-intent cold-mount trade-off.
-              //   - otherwise → Virtuoso. Browsing mode, virtualization
-              //     wins on first-paint perf for long timelines.
-              //
-              // The split is deliberate: virtualization and "land precisely
-              // on a target" have fundamentally opposed contracts (estimated
-              // heights vs real heights). Trying to satisfy both in one
-              // path is what produced the bug history this PR closes.
-              !highlightCommentId && !find.open ? (
-                !scrollContainerEl ? (
-                  // Skeleton while the callback ref populates so the gap
-                  // between IssueDetail mount and Virtuoso mount doesn't
-                  // flash empty.
-                  <TimelineSkeleton />
+            <CurrentIssueRenderContextProvider value={currentIssueRenderContext}>
+              {timelineLoading && timelineView.groups.length === 0 ? (
+                <TimelineSkeleton />
+              ) : (
+                // Two render modes:
+                //   - `highlightCommentId` set (came from inbox deep-link) →
+                //     render flat. Every comment mounts, every height is real,
+                //     the target id is in the DOM the instant the useEffect
+                //     above runs `scrollIntoView`. No virtualization estimate
+                //     errors, no spacer reflow drift. Pays cold-mount cost
+                //     proportional to items.length (markdown + lowlight per
+                //     comment), which is acceptable in the deep-link case —
+                //     the user has explicit intent to land on a specific item.
+                //   - `find.open` (in-page Cmd/Ctrl+F) → also render flat, so
+                //     every comment is in the DOM for the find walk to match
+                //     and highlight. Same explicit-intent cold-mount trade-off.
+                //   - otherwise → Virtuoso. Browsing mode, virtualization
+                //     wins on first-paint perf for long timelines.
+                //
+                // The split is deliberate: virtualization and "land precisely
+                // on a target" have fundamentally opposed contracts (estimated
+                // heights vs real heights). Trying to satisfy both in one
+                // path is what produced the bug history this PR closes.
+                !highlightCommentId && !find.open ? (
+                  !scrollContainerEl ? (
+                    // Skeleton while the callback ref populates so the gap
+                    // between IssueDetail mount and Virtuoso mount doesn't
+                    // flash empty.
+                    <TimelineSkeleton />
+                  ) : (
+                    <div className="mt-4">
+                      <Virtuoso
+                        key={`${wsId}:${id}`}
+                        ref={virtuosoRef}
+                        customScrollParent={scrollContainerEl}
+                        data={items}
+                        initialScrollTop={restoredScrollTop}
+                        increaseViewportBy={{ top: 800, bottom: 800 }}
+                        computeItemKey={(_i, item) => `${item.kind}:${item.id}`}
+                        skipAnimationFrameInResizeObserver
+                        // followOutput intentionally NOT set. Virtuoso treats
+                        // it as a sticky "is at bottom" flag and resets
+                        // scrollTop to maxScrollTop on every height-change
+                        // tick — issue-detail is document-shaped, not chat.
+                        itemContent={renderItem}
+                      />
+                    </div>
+                  )
                 ) : (
                   <div className="mt-4">
-                    <Virtuoso
-                      key={`${wsId}:${id}`}
-                      ref={virtuosoRef}
-                      customScrollParent={scrollContainerEl}
-                      data={items}
-                      initialScrollTop={restoredScrollTop}
-                      increaseViewportBy={{ top: 800, bottom: 800 }}
-                      computeItemKey={(_i, item) => `${item.kind}:${item.id}`}
-                      skipAnimationFrameInResizeObserver
-                      // followOutput intentionally NOT set. Virtuoso treats
-                      // it as a sticky "is at bottom" flag and resets
-                      // scrollTop to maxScrollTop on every height-change
-                      // tick — issue-detail is document-shaped, not chat.
-                      itemContent={renderItem}
-                    />
+                    {items.map((item, i) => (
+                      <Fragment key={`${item.kind}:${item.id}`}>
+                        {renderItem(i, item)}
+                      </Fragment>
+                    ))}
                   </div>
                 )
-              ) : (
-                <div className="mt-4">
-                  {items.map((item, i) => (
-                    <Fragment key={`${item.kind}:${item.id}`}>
-                      {renderItem(i, item)}
-                    </Fragment>
-                  ))}
-                </div>
-              )
-            )}
+              )}
+            </CurrentIssueRenderContextProvider>
 
           </div>
 

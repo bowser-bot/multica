@@ -4,6 +4,7 @@ import { AppLink } from "../../navigation";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { IssueChip } from "./issue-chip";
 import { IssueHoverCard } from "./issue-hover-card";
+import { useCurrentIssueRenderContext } from "../current-issue-render-context";
 
 interface IssueMentionCardProps {
   issueId: string;
@@ -27,6 +28,10 @@ interface IssueMentionCardProps {
  */
 export function IssueMentionCard({ issueId, fallbackLabel }: IssueMentionCardProps) {
   const p = useWorkspacePaths();
+  const currentIssue = useCurrentIssueRenderContext();
+  const isCurrentIssue =
+    currentIssue !== null &&
+    (issueId === currentIssue.id || issueId === currentIssue.identifier);
   return (
     <IssueHoverCard issueId={issueId} fallbackLabel={fallbackLabel}>
       <AppLink
@@ -37,6 +42,8 @@ export function IssueMentionCard({ issueId, fallbackLabel }: IssueMentionCardPro
         <IssueChip
           issueId={issueId}
           fallbackLabel={fallbackLabel}
+          variant={isCurrentIssue ? "current" : "default"}
+          currentIdentifier={isCurrentIssue ? currentIssue.identifier : undefined}
           className="cursor-pointer hover:bg-accent transition-colors"
         />
       </AppLink>

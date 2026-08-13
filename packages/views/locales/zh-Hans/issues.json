@@ -6,6 +6,7 @@
     "empty_hint": "创建一个任务开始使用。",
     "move_failed": "移动任务失败"
   },
+  "current_task": "当前任务",
   "status": {
     "backlog": "待规划",
     "todo": "待办",

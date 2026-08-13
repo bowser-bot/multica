@@ -6,6 +6,7 @@
     "empty_hint": "Create an issue to get started.",
     "move_failed": "Failed to move issue"
   },
+  "current_task": "Current task",
   "status": {
     "backlog": "Backlog",
     "todo": "Todo",

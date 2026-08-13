@@ -6,6 +6,7 @@
     "empty_hint": "タスクを作成して始めましょう。",
     "move_failed": "タスクを移動できませんでした"
   },
+  "current_task": "現在のタスク",
   "status": {
     "backlog": "バックログ",
     "todo": "未着手",
