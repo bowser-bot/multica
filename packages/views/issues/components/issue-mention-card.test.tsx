@@ -139,17 +139,11 @@ describe("IssueMentionCard", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("uses current-task content when the resolved target matches the current issue id", () => {
+  it("uses current-issue content when the resolved target matches the current issue id", () => {
     renderCard(makeAdapter(), { id: "issue-1", identifier: "MUL-7" });
 
     expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-current", "true");
-    expect(screen.getByTestId("issue-chip")).toHaveTextContent("Current task · MUL-7");
-  });
-
-  it("uses current-task content when the target is the current identifier", () => {
-    renderCard(makeAdapter(), { id: "issue-1", identifier: "MUL-7" }, "MUL-7");
-
-    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-current", "true");
+    expect(screen.getByTestId("issue-chip")).toHaveTextContent("This issue · MUL-7");
   });
 
   it("does not infer current-issue context from the visible fallback label", () => {

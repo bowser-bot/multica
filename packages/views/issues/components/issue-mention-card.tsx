@@ -18,7 +18,7 @@ function CurrentIssueChipContent({ identifier }: { identifier: string }) {
 
   return (
     <span className="font-medium text-muted-foreground shrink-0">
-      <span>{t(($) => $.detail.current_task)}</span>{" "}
+      <span>{t(($) => $.detail.current_issue)}</span>{" "}
       <span className="text-muted-foreground">·</span>{" "}
       <span translate="no">{identifier}</span>
     </span>
@@ -42,9 +42,10 @@ function CurrentIssueChipContent({ identifier }: { identifier: string }) {
 export function IssueMentionCard({ issueId, fallbackLabel }: IssueMentionCardProps) {
   const p = useWorkspacePaths();
   const currentIssue = useCurrentIssueRenderContext();
-  const isCurrentIssue =
-    currentIssue !== null &&
-    (issueId === currentIssue.id || issueId === currentIssue.identifier);
+  const currentIdentifier =
+    currentIssue && issueId === currentIssue.id
+      ? currentIssue.identifier
+      : null;
   return (
     <IssueHoverCard issueId={issueId} fallbackLabel={fallbackLabel}>
       <AppLink
@@ -57,10 +58,8 @@ export function IssueMentionCard({ issueId, fallbackLabel }: IssueMentionCardPro
           fallbackLabel={fallbackLabel}
           className="cursor-pointer hover:bg-accent transition-colors"
         >
-          {isCurrentIssue ? (
-            <CurrentIssueChipContent
-              identifier={currentIssue?.identifier ?? fallbackLabel ?? issueId.slice(0, 8)}
-            />
+          {currentIdentifier ? (
+            <CurrentIssueChipContent identifier={currentIdentifier} />
           ) : undefined}
         </IssueChip>
       </AppLink>

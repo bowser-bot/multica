@@ -96,6 +96,6 @@ describe("ContentEditor current-issue context", () => {
       "true",
       "false",
     ]);
-    expect(chips[0]).toHaveTextContent("Current task · MUL-7");
+    expect(chips[0]).toHaveTextContent("This issue · MUL-7");
   });
 });

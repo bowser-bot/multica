@@ -134,7 +134,7 @@ describe("RichContent current-issue rendering", () => {
       "false",
       "false",
     ]);
-    expect(chips[0]).toHaveTextContent("Current task · MUL-7");
+    expect(chips[0]).toHaveTextContent("This issue · MUL-7");
   });
 
   it("keeps every chip on regular content without a current-issue provider", () => {
