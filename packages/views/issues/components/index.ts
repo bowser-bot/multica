@@ -10,9 +10,3 @@ export { CommentInput } from "./comment-input";
 export { ReplyInput } from "./reply-input";
 export { IssueMentionCard } from "./issue-mention-card";
 export { IssueChip } from "./issue-chip";
-export {
-  CurrentIssueRenderContext,
-  CurrentIssueRenderContextProvider,
-  useCurrentIssueRenderContext,
-  type CurrentIssueRenderContextValue,
-} from "../current-issue-render-context";

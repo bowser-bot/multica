@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useQuery } from "@tanstack/react-query";
-import { renderWithI18n } from "../../test/i18n";
 import { IssueChip } from "./issue-chip";
 
 vi.mock("@tanstack/react-query", () => ({
@@ -69,26 +68,5 @@ describe("IssueChip", () => {
 
     expect(screen.getByText("MUL-999999999999999999999999999999999"))
       .toHaveClass("min-w-0", "truncate");
-  });
-
-  it("renders the current variant with only the localized label and identifier", () => {
-    renderWithI18n(
-      <IssueChip
-        issueId="issue-1"
-        variant="current"
-        currentIdentifier="MUL-3405"
-      />,
-    );
-
-    expect(screen.getByText("Current task")).toBeInTheDocument();
-    const identifier = screen.getByText("MUL-3405");
-    expect(identifier).toHaveAttribute("translate", "no");
-    expect(identifier.closest(".issue-mention")).toHaveClass(
-      "max-w-[min(18rem,100%)]",
-    );
-    expect(screen.queryByTestId("status-icon")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("A very long issue title that should stay inside a narrow chat bubble"),
-    ).not.toBeInTheDocument();
   });
 });
