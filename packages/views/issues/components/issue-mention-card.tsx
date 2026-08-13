@@ -4,12 +4,25 @@ import { AppLink } from "../../navigation";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { IssueChip } from "./issue-chip";
 import { IssueHoverCard } from "./issue-hover-card";
+import { useT } from "../../i18n";
 import { useCurrentIssueRenderContext } from "../current-issue-render-context";
 
 interface IssueMentionCardProps {
   issueId: string;
   /** Fallback text when issue is not in store (e.g. "MUL-7") */
   fallbackLabel?: string;
+}
+
+function CurrentIssueChipContent({ identifier }: { identifier: string }) {
+  const { t } = useT("issues");
+
+  return (
+    <span className="font-medium text-muted-foreground shrink-0">
+      <span>{t(($) => $.detail.current_task)}</span>{" "}
+      <span className="text-muted-foreground">·</span>{" "}
+      <span translate="no">{identifier}</span>
+    </span>
+  );
 }
 
 /**
@@ -42,10 +55,14 @@ export function IssueMentionCard({ issueId, fallbackLabel }: IssueMentionCardPro
         <IssueChip
           issueId={issueId}
           fallbackLabel={fallbackLabel}
-          variant={isCurrentIssue ? "current" : "default"}
-          currentIdentifier={isCurrentIssue ? currentIssue.identifier : undefined}
           className="cursor-pointer hover:bg-accent transition-colors"
-        />
+        >
+          {isCurrentIssue ? (
+            <CurrentIssueChipContent
+              identifier={currentIssue?.identifier ?? fallbackLabel ?? issueId.slice(0, 8)}
+            />
+          ) : undefined}
+        </IssueChip>
       </AppLink>
     </IssueHoverCard>
   );

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../test/i18n";
 import { NavigationProvider } from "../navigation/context";
@@ -9,19 +10,18 @@ import { CurrentIssueRenderContextProvider } from "../issues/current-issue-rende
 vi.mock("../issues/components/issue-chip", () => ({
   IssueChip: ({
     issueId,
-    variant,
-    currentIdentifier,
+    children,
   }: {
     issueId: string;
-    variant?: string;
-    currentIdentifier?: string;
+    children?: ReactNode;
   }) => (
     <span
       data-testid="issue-chip"
       data-issue-id={issueId}
-      data-variant={variant ?? "default"}
-      data-current-identifier={currentIdentifier}
-    />
+      data-current={children !== undefined ? "true" : "false"}
+    >
+      {children}
+    </span>
   ),
 }));
 
@@ -92,10 +92,10 @@ describe("ContentEditor current-issue context", () => {
     });
 
     const chips = screen.getAllByTestId("issue-chip");
-    expect(chips.map((chip) => chip.getAttribute("data-variant"))).toEqual([
-      "current",
-      "default",
+    expect(chips.map((chip) => chip.getAttribute("data-current"))).toEqual([
+      "true",
+      "false",
     ]);
-    expect(chips[0]).toHaveAttribute("data-current-identifier", "MUL-7");
+    expect(chips[0]).toHaveTextContent("Current task · MUL-7");
   });
 });

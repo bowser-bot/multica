@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { renderWithI18n } from "../../test/i18n";
 import { IssueMentionCard } from "./issue-mention-card";
 import { NavigationProvider } from "../../navigation";
 import type { NavigationAdapter } from "../../navigation";
@@ -17,19 +19,16 @@ vi.mock("@multica/core/paths", () => ({
 vi.mock("./issue-chip", () => ({
   IssueChip: ({
     fallbackLabel,
-    variant,
-    currentIdentifier,
+    children,
   }: {
     fallbackLabel?: string;
-    variant?: string;
-    currentIdentifier?: string;
+    children?: ReactNode;
   }) => (
     <span
       data-testid="issue-chip"
-      data-variant={variant}
-      data-current-identifier={currentIdentifier}
+      data-current={children !== undefined ? "true" : "false"}
     >
-      {fallbackLabel ?? "chip"}
+      {children ?? fallbackLabel ?? "chip"}
     </span>
   ),
 }));
@@ -56,7 +55,7 @@ function renderCard(
   const card = (
     <IssueMentionCard issueId={issueId} fallbackLabel="MUL-7" />
   );
-  return render(
+  return renderWithI18n(
     <NavigationProvider value={adapter}>
       {context ? (
         <CurrentIssueRenderContextProvider value={context}>
@@ -140,25 +139,22 @@ describe("IssueMentionCard", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("uses the current variant when the resolved target matches the current issue id", () => {
+  it("uses current-task content when the resolved target matches the current issue id", () => {
     renderCard(makeAdapter(), { id: "issue-1", identifier: "MUL-7" });
 
-    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-variant", "current");
-    expect(screen.getByTestId("issue-chip")).toHaveAttribute(
-      "data-current-identifier",
-      "MUL-7",
-    );
+    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-current", "true");
+    expect(screen.getByTestId("issue-chip")).toHaveTextContent("Current task · MUL-7");
   });
 
-  it("uses the current variant when the target is the current identifier", () => {
+  it("uses current-task content when the target is the current identifier", () => {
     renderCard(makeAdapter(), { id: "issue-1", identifier: "MUL-7" }, "MUL-7");
 
-    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-variant", "current");
+    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-current", "true");
   });
 
   it("does not infer current-issue context from the visible fallback label", () => {
     renderCard(makeAdapter(), { id: "issue-2", identifier: "MUL-7" });
 
-    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-variant", "default");
+    expect(screen.getByTestId("issue-chip")).toHaveAttribute("data-current", "false");
   });
 });

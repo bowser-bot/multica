@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import type { Issue } from "@multica/core/types";
 import { renderWithI18n } from "../test/i18n";
 import { NavigationProvider } from "../navigation/context";
@@ -25,20 +26,17 @@ vi.mock("../issues/hooks", () => ({
 vi.mock("../issues/components/issue-chip", () => ({
   IssueChip: ({
     issueId,
-    variant,
-    currentIdentifier,
+    children,
   }: {
     issueId: string;
-    variant?: string;
-    currentIdentifier?: string;
+    children?: ReactNode;
   }) => (
     <span
       data-testid="issue-chip"
       data-issue-id={issueId}
-      data-variant={variant ?? "default"}
-      data-current-identifier={currentIdentifier}
+      data-current={children !== undefined ? "true" : "false"}
     >
-      {variant === "current" ? `Current task · ${currentIdentifier}` : issueId}
+      {children ?? issueId}
     </span>
   ),
 }));
@@ -131,21 +129,21 @@ describe("RichContent current-issue rendering", () => {
       OTHER_ID,
       OTHER_ID,
     ]);
-    expect(chips.map((chip) => chip.getAttribute("data-variant"))).toEqual([
-      "current",
-      "default",
-      "default",
+    expect(chips.map((chip) => chip.getAttribute("data-current"))).toEqual([
+      "true",
+      "false",
+      "false",
     ]);
-    expect(chips[0]).toHaveAttribute("data-current-identifier", "MUL-7");
+    expect(chips[0]).toHaveTextContent("Current task · MUL-7");
   });
 
-  it("keeps every chip on the default variant without a current-issue provider", () => {
+  it("keeps every chip on regular content without a current-issue provider", () => {
     renderContent();
 
     const chips = screen.getAllByTestId("issue-chip");
     expect(chips).toHaveLength(3);
     for (const chip of chips) {
-      expect(chip).toHaveAttribute("data-variant", "default");
+      expect(chip).toHaveAttribute("data-current", "false");
     }
   });
 });

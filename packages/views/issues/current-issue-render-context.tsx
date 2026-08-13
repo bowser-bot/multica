@@ -18,7 +18,7 @@ export type CurrentIssueRenderContextValue = Readonly<{
  * detail, inbox, chat, and other surfaces, and only an explicit issue-detail
  * owner may opt into current-issue semantics.
  */
-export const CurrentIssueRenderContext =
+const CurrentIssueRenderContext =
   createContext<CurrentIssueRenderContextValue | null>(null);
 
 export function CurrentIssueRenderContextProvider({

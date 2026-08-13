@@ -1,10 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { issueListOptions, issueDetailOptions } from "@multica/core/issues/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { StatusIcon } from "./status-icon";
-import { useT } from "../../i18n";
 
 /**
  * Compact, presentation-only representation of an issue —
@@ -39,10 +39,8 @@ export interface IssueChipProps {
   issueId: string;
   /** Shown when the issue can't be resolved (deleted, other workspace, …). */
   fallbackLabel?: string;
-  /** Presentation variant for an issue mention. */
-  variant?: "default" | "current";
-  /** Stable identifier from the owning issue-detail context. */
-  currentIdentifier?: string;
+  /** Optional content override for callers that need the shared chip shell. */
+  children?: ReactNode;
   /** Extra classes — callers layer interaction hints here
    *  (e.g. `hover:bg-accent cursor-pointer` for navigable variants). */
   className?: string;
@@ -51,23 +49,10 @@ export interface IssueChipProps {
 const BASE_CLASS =
   "issue-mention inline-flex min-w-0 max-w-[min(18rem,100%)] items-center gap-1.5 rounded-md border mx-0.5 px-2 py-0.5 text-caption";
 
-function CurrentIssueChipContent({ identifier }: { identifier: string }) {
-  const { t } = useT("issues");
-
-  return (
-    <span className="font-medium text-muted-foreground shrink-0">
-      <span>{t(($) => $.current_task)}</span>{" "}
-      <span className="text-muted-foreground">·</span>{" "}
-      <span translate="no">{identifier}</span>
-    </span>
-  );
-}
-
 export function IssueChip({
   issueId,
   fallbackLabel,
-  variant = "default",
-  currentIdentifier,
+  children,
   className,
 }: IssueChipProps) {
   const wsId = useWorkspaceId();
@@ -83,14 +68,8 @@ export function IssueChip({
   const issue = listIssue ?? detailIssue;
   const cls = className ? `${BASE_CLASS} ${className}` : BASE_CLASS;
 
-  if (variant === "current") {
-    return (
-      <span className={cls}>
-        <CurrentIssueChipContent
-          identifier={currentIdentifier ?? issue?.identifier ?? fallbackLabel ?? issueId.slice(0, 8)}
-        />
-      </span>
-    );
+  if (children !== undefined) {
+    return <span className={cls}>{children}</span>;
   }
 
   if (!issue) {

@@ -6,7 +6,6 @@
     "empty_hint": "Create an issue to get started.",
     "move_failed": "Failed to move issue"
   },
-  "current_task": "Current task",
   "status": {
     "backlog": "Backlog",
     "todo": "Todo",
@@ -245,6 +244,7 @@
     "back": "Back",
     "title_placeholder": "Issue title",
     "desc_placeholder": "Add description...",
+    "current_task": "Current task",
     "sub_issues_label": "Sub-issues",
     "sub_issue_of": "Sub-issue of",
     "add_sub_issues": "Add sub-issues",
